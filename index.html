@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Override</title>
+<style>
+:root{--g:#0f0;--r:#f00}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:black;color:var(--g);font-family:monospace;overflow:hidden}
+canvas{position:fixed;inset:0}
+.hidden{display:none}
+.flash{animation:flash 1s infinite}
+@keyframes flash{0%{color:var(--g)}50%{color:var(--r)}100%{color:var(--g)}}
+.shake{animation:shake .06s infinite}
+@keyframes shake{0%{transform:translate(4px,3px)}50%{transform:translate(-4px,-3px)}100%{transform:translate(0,0)}}
+.glitch{filter:hue-rotate(20deg);background:#400}
+
+/* MATRIX */
+#matrix{z-index:0}
+
+/* UI */
+#ui{position:relative;z-index:2;text-align:center;top:26%}
+button,input{background:black;color:currentColor;border:1px solid currentColor;padding:12px;margin:6px;font-size:17px}
+
+/* Logs */
+#codes{position:fixed;bottom:0;left:0;width:100%;height:40%;overflow:hidden;white-space:pre;font-size:12px;z-index:1}
+#timer{position:fixed;top:10px;right:12px;font-size:22px;color:red;z-index:2}
+#blackout{position:fixed;inset:0;background:black;z-index:99;display:none}
+#footer{position:fixed;bottom:6px;width:100%;text-align:center;font-size:12px;color:#666;z-index:3}
+
+/* PHONE */
+#phoneUI{position:fixed;inset:0;display:none;z-index:3;background:#000}
+.phone{max-width:420px;margin:auto;height:100%;background:linear-gradient(#0b0b0b,#000);border:2px solid #222;position:relative}
+.status{display:flex;justify-content:space-between;padding:10px;color:#bbb;font-size:12px}
+.lock{display:flex;flex-direction:column;align-items:center;justify-content:center;height:55%}
+.time{font-size:56px;letter-spacing:2px}
+.date{opacity:.8;margin-bottom:20px}
+.swipe{opacity:.7;margin-top:20px}
+.swipebar{width:120px;height:6px;border-radius:6px;background:#444;margin-top:10px}
+.notifs{padding:10px;max-height:30%;overflow:auto}
+.notif{display:flex;gap:8px;border:1px solid #333;border-left:4px solid var(--g);padding:8px;margin:6px 0;background:#050505}
+.icon{width:28px;height:28px;border-radius:6px;background:#111;display:flex;align-items:center;justify-content:center}
+.controls{position:absolute;bottom:16px;width:100%;text-align:center}
+#passBox input{letter-spacing:8px;text-align:center}
+
+/* HOME */
+#home{display:none;padding:14px}
+.apps{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:20px}
+.app{background:#0a0a0a;border:1px solid #222;border-radius:14px;padding:10px;text-align:center;font-size:12px}
+.app i{display:block;font-size:22px;margin-bottom:6px}
+</style>
+</head>
+<body>
+
+<canvas id="matrix"></canvas>
+
+<div id="ui">
+  <button id="start">اضغط للاستهداف</button><br>
+  <input id="phone" class="hidden" placeholder="أدخل رقم الهاتف">
+  <br>
+  <button id="exec" class="hidden">تنفيذ</button>
+</div>
+
+<div id="timer"></div>
+<div id="codes"></div>
+<div id="blackout"></div>
+
+<!-- PHONE -->
+<div id="phoneUI">
+  <div class="phone">
+    <div class="status">
+      <span>📶 LTE</span><span id="clockMini">--:--</span><span>🔋 87%</span>
+    </div>
+
+    <div class="lock" id="lockScreen">
+      <div class="time" id="clockBig">--:--</div>
+      <div class="date" id="dateBig">---</div>
+      <div class="swipe flash">اسحب للأعلى للفتح</div>
+      <div class="swipebar"></div>
+    </div>
+
+    <div class="notifs" id="notifs"></div>
+
+    <div class="controls" id="lockControls">
+      <button id="open">فتح</button>
+      <div id="passBox" class="hidden">
+        <input id="pass" type="password" placeholder="••••">
+        <button id="unlock">تأكيد</button>
+      </div>
+    </div>
+
+    <!-- HOME -->
+    <div id="home">
+      <div class="apps" id="appList">
+        <div class="app"><i>📞</i>الهاتف</div>
+        <div class="app"><i>💬</i>الرسائل</div>
+        <div class="app"><i>📷</i>الكاميرا</div>
+        <div class="app"><i>🌐</i>المتصفح</div>
+        <div class="app"><i>⚙️</i>الإعدادات</div>
+        <div class="app"><i>📁</i>الملفات</div>
+        <div class="app"><i>🔔</i>الإشعارات</div>
+        <div class="app"><i>🛡️</i>الأمان</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="footer">إخلاء مسؤولية – النجم</div>
+
+<script>
+/* MATRIX */
+const c=document.getElementById("matrix"),x=c.getContext("2d");
+function resize(){c.width=innerWidth;c.height=innerHeight} resize(); addEventListener('resize',resize);
+let drops=Array(Math.floor(c.width/10)).fill(1);
+setInterval(()=>{x.fillStyle="rgba(0,0,0,.06)";x.fillRect(0,0,c.width,c.height);
+x.fillStyle=getComputedStyle(document.body).color;
+drops.forEach((y,i)=>{x.fillText(Math.random()<.5?'0':'1',i*10,y*10);
+if(y*10>c.height&&Math.random()>.97)drops[i]=0;drops[i]++;});},33);
+
+/* صوت Google */
+function speak(t,rate=1,pitch=1){let u=new SpeechSynthesisUtterance(t);u.lang="ar";u.rate=rate;u.pitch=pitch;speechSynthesis.speak(u);}
+
+/* إنذار */
+let AC;
+function megaSiren(ms=4000){AC=new (window.AudioContext||window.webkitAudioContext)();
+const o1=AC.createOscillator(),o2=AC.createOscillator(),g=AC.createGain();
+o1.type="sawtooth";o2.type="square";o1.frequency.value=420;o2.frequency.value=880;g.gain.value=.8;
+o1.connect(g);o2.connect(g);g.connect(AC.destination);
+o1.start();o2.start();
+let up=true;const t=setInterval(()=>{o1.frequency.setValueAtTime(up?420:980,AC.currentTime);
+o2.frequency.setValueAtTime(up?880:260,AC.currentTime);up=!up;},120);
+setTimeout(()=>{clearInterval(t);o1.stop();o2.stop();AC.close();},ms);
+}
+
+/* تشويش */
+function noise(ms=1200){let a=new AudioContext(),o=a.createOscillator(),g=a.createGain();
+o.type="triangle";o.frequency.value=60;g.gain.value=.6;o.connect(g).connect(a.destination);o.start();
+setTimeout(()=>{o.stop();a.close()},ms);
+}
+
+/* ألوان */
+let flip=true;
+setInterval(()=>{document.body.style.color= flip? 'var(--r)':'var(--g)'; flip=!flip;},1000);
+
+/* اهتزاز موبايل */
+function vibrate(p){ if(navigator.vibrate) navigator.vibrate(p); }
+
+/* عناصر */
+const start=document.getElementById('start');
+const phone=document.getElementById('phone');
+const exec=document.getElementById('exec');
+const codes=document.getElementById('codes');
+const phoneUI=document.getElementById('phoneUI');
+const notifs=document.getElementById('notifs');
+const lockScreen=document.getElementById('lockScreen');
+const lockControls=document.getElementById('lockControls');
+const passBox=document.getElementById('passBox');
+const pass=document.getElementById('pass');
+const unlockBtn=document.getElementById('unlock');
+const home=document.getElementById('home');
+const appList=document.getElementById('appList');
+
+/* إشعارات */
+function addNotif(icon,title,body){const d=document.createElement('div');d.className='notif';
+d.innerHTML=`<div class="icon">${icon}</div><div><strong>${title}</strong><div>${body}</div></div>`;
+notifs.prepend(d); vibrate([200,100,200]);
+}
+
+/* ساعة */
+const clockBig=document.getElementById('clockBig');
+const clockMini=document.getElementById('clockMini');
+const dateBig=document.getElementById('dateBig');
+function updateClock(){const now=new Date();
+const h=String(now.getHours()).padStart(2,'0');
+const m=String(now.getMinutes()).padStart(2,'0');
+clockBig.textContent=`${h}:${m}`;
+clockMini.textContent=`${h}:${m}`;
+dateBig.textContent=now.toLocaleDateString('ar-EG',{weekday:'long',year:'numeric',month:'long',day:'numeric'});}
+setInterval(updateClock,1000); updateClock();
+
+/* الأكواد */
+function generateCodes(){setInterval(()=>{codes.textContent+=`[SYS] ${Math.random().toString(36).slice(2)}\n`;codes.scrollTop=codes.scrollHeight;},55);}
+
+/* عداد وهمي للتطبيقات */
+function fakeAppLoad(appName){
+  addNotif("📂","تطبيق "+appName,"جاري تحميل البيانات... هذه العملية تستغرق وقتًا طويلاً جدًا");
+  speak("جار تحميل "+appName+"، يرجى الانتظار،
