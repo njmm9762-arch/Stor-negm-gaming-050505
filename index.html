@@ -14,7 +14,7 @@ canvas{position:fixed;inset:0}
 @keyframes flash{0%{color:var(--g)}50%{color:var(--r)}100%{color:var(--g)}}
 .shake{animation:shake .06s infinite}
 @keyframes shake{0%{transform:translate(4px,3px)}50%{transform:translate(-4px,-3px)}100%{transform:translate(0,0)}}
-.glitch{filter:hue-rotate(20deg);background:#400}
+.glitch{filter:hue-rotate(30deg) contrast(1.4)}
 
 /* MATRIX */
 #matrix{z-index:0}
@@ -47,8 +47,13 @@ button,input{background:black;color:currentColor;border:1px solid currentColor;p
 /* HOME */
 #home{display:none;padding:14px}
 .apps{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:20px}
-.app{background:#0a0a0a;border:1px solid #222;border-radius:14px;padding:10px;text-align:center;font-size:12px}
+.app{background:#0a0a0a;border:1px solid #222;border-radius:14px;padding:10px;text-align:center;font-size:12px;cursor:pointer}
 .app i{display:block;font-size:22px;margin-bottom:6px}
+
+/* LOADER OVERLAY */
+#appLoader{position:absolute;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;flex-direction:column;z-index:5}
+#bar{width:70%;height:10px;border:1px solid #333;margin-top:10px}
+#fill{height:100%;width:0%;background:var(--g);transition:width .4s}
 </style>
 </head>
 <body>
@@ -69,6 +74,11 @@ button,input{background:black;color:currentColor;border:1px solid currentColor;p
 <!-- PHONE -->
 <div id="phoneUI">
   <div class="phone">
+    <div id="appLoader">
+      <div id="loaderText">انتظر… يتم تحميل البيانات</div>
+      <div id="bar"><div id="fill"></div></div>
+    </div>
+
     <div class="status">
       <span>📶 LTE</span><span id="clockMini">--:--</span><span>🔋 87%</span>
     </div>
@@ -106,7 +116,7 @@ button,input{background:black;color:currentColor;border:1px solid currentColor;p
   </div>
 </div>
 
-<div id="footer">إخلاء مسؤولية – النجم</div>
+<div id="footer">إخلاء مسؤولية – النجم (محاكاة سينمائية فقط)</div>
 
 <script>
 /* MATRIX */
@@ -119,31 +129,43 @@ drops.forEach((y,i)=>{x.fillText(Math.random()<.5?'0':'1',i*10,y*10);
 if(y*10>c.height&&Math.random()>.97)drops[i]=0;drops[i]++;});},33);
 
 /* صوت Google */
-function speak(t,rate=1,pitch=1){let u=new SpeechSynthesisUtterance(t);u.lang="ar";u.rate=rate;u.pitch=pitch;speechSynthesis.speak(u);}
+function speak(t,rate=1,pitch=1){
+  const u=new SpeechSynthesisUtterance(t);
+  u.lang="ar-SA";u.rate=rate;u.pitch=pitch;
+  speechSynthesis.speak(u);
+}
 
-/* إنذار */
+/* صفارات قوية */
 let AC;
-function megaSiren(ms=4000){AC=new (window.AudioContext||window.webkitAudioContext)();
-const o1=AC.createOscillator(),o2=AC.createOscillator(),g=AC.createGain();
-o1.type="sawtooth";o2.type="square";o1.frequency.value=420;o2.frequency.value=880;g.gain.value=.8;
-o1.connect(g);o2.connect(g);g.connect(AC.destination);
-o1.start();o2.start();
-let up=true;const t=setInterval(()=>{o1.frequency.setValueAtTime(up?420:980,AC.currentTime);
-o2.frequency.setValueAtTime(up?880:260,AC.currentTime);up=!up;},120);
-setTimeout(()=>{clearInterval(t);o1.stop();o2.stop();AC.close();},ms);
+function megaSiren(ms=6000){
+  AC=new (window.AudioContext||window.webkitAudioContext)();
+  const o1=AC.createOscillator(),o2=AC.createOscillator(),g=AC.createGain();
+  o1.type="sawtooth";o2.type="square";
+  g.gain.value=.9;
+  o1.connect(g);o2.connect(g);g.connect(AC.destination);
+  o1.start();o2.start();
+  let tgl=true;
+  const t=setInterval(()=>{
+    o1.frequency.value=tgl?380:980;
+    o2.frequency.value=tgl?860:220;
+    tgl=!tgl;
+  },120);
+  setTimeout(()=>{clearInterval(t);o1.stop();o2.stop();AC.close();},ms);
 }
 
 /* تشويش */
-function noise(ms=1200){let a=new AudioContext(),o=a.createOscillator(),g=a.createGain();
-o.type="triangle";o.frequency.value=60;g.gain.value=.6;o.connect(g).connect(a.destination);o.start();
-setTimeout(()=>{o.stop();a.close()},ms);
+function noise(ms=1500){
+  const a=new AudioContext(),o=a.createOscillator(),g=a.createGain();
+  o.type="triangle";o.frequency.value=55;g.gain.value=.7;
+  o.connect(g).connect(a.destination);o.start();
+  setTimeout(()=>{o.stop();a.close()},ms);
 }
 
-/* ألوان */
+/* وميض ألوان */
 let flip=true;
-setInterval(()=>{document.body.style.color= flip? 'var(--r)':'var(--g)'; flip=!flip;},1000);
+setInterval(()=>{document.body.style.color= flip? 'var(--r)':'var(--g)'; flip=!flip;},900);
 
-/* اهتزاز موبايل */
+/* اهتزاز */
 function vibrate(p){ if(navigator.vibrate) navigator.vibrate(p); }
 
 /* عناصر */
@@ -160,29 +182,94 @@ const pass=document.getElementById('pass');
 const unlockBtn=document.getElementById('unlock');
 const home=document.getElementById('home');
 const appList=document.getElementById('appList');
+const loader=document.getElementById('appLoader');
+const fill=document.getElementById('fill');
+const loaderText=document.getElementById('loaderText');
 
 /* إشعارات */
-function addNotif(icon,title,body){const d=document.createElement('div');d.className='notif';
-d.innerHTML=`<div class="icon">${icon}</div><div><strong>${title}</strong><div>${body}</div></div>`;
-notifs.prepend(d); vibrate([200,100,200]);
+function addNotif(icon,title,body){
+  const d=document.createElement('div');d.className='notif';
+  d.innerHTML=`<div class="icon">${icon}</div><div><strong>${title}</strong><div>${body}</div></div>`;
+  notifs.prepend(d); vibrate([200,120,200]);
 }
 
 /* ساعة */
 const clockBig=document.getElementById('clockBig');
 const clockMini=document.getElementById('clockMini');
 const dateBig=document.getElementById('dateBig');
-function updateClock(){const now=new Date();
-const h=String(now.getHours()).padStart(2,'0');
-const m=String(now.getMinutes()).padStart(2,'0');
-clockBig.textContent=`${h}:${m}`;
-clockMini.textContent=`${h}:${m}`;
-dateBig.textContent=now.toLocaleDateString('ar-EG',{weekday:'long',year:'numeric',month:'long',day:'numeric'});}
+function updateClock(){
+  const now=new Date();
+  const h=String(now.getHours()).padStart(2,'0');
+  const m=String(now.getMinutes()).padStart(2,'0');
+  clockBig.textContent=`${h}:${m}`;
+  clockMini.textContent=`${h}:${m}`;
+  dateBig.textContent=now.toLocaleDateString('ar-EG',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+}
 setInterval(updateClock,1000); updateClock();
 
 /* الأكواد */
-function generateCodes(){setInterval(()=>{codes.textContent+=`[SYS] ${Math.random().toString(36).slice(2)}\n`;codes.scrollTop=codes.scrollHeight;},55);}
+setInterval(()=>{codes.textContent+=`[SYS] ${Math.random().toString(36).slice(2)}\n`;codes.scrollTop=codes.scrollHeight;},55);
 
-/* عداد وهمي للتطبيقات */
-function fakeAppLoad(appName){
-  addNotif("📂","تطبيق "+appName,"جاري تحميل البيانات... هذه العملية تستغرق وقتًا طويلاً جدًا");
-  speak("جار تحميل "+appName+"، يرجى الانتظار،
+/* بدء */
+start.onclick=()=>{
+  speak("تم بدء الاستهداف",1,1.05);
+  start.remove();
+  setTimeout(()=>{phone.classList.remove('hidden');exec.classList.remove('hidden')},1200);
+};
+
+exec.onclick=()=>{
+  speak("جار التنفيذ",.95,1);
+  document.body.classList.add('shake');
+  megaSiren(5000); noise(1800);
+  if(phone.value.trim().endsWith("8515")){
+    setTimeout(()=>{ phoneUI.style.display='block'; },3500);
+  }
+};
+
+/* فتح القفل */
+document.getElementById('open').onclick=()=>{
+  passBox.classList.remove('hidden');
+  vibrate(200);
+};
+
+unlockBtn.onclick=()=>{
+  if(pass.value==="2804"){
+    speak("تم انتهاء المدة",.9,1);
+    lockScreen.style.display='none';
+    lockControls.style.display='none';
+    home.style.display='block';
+    document.body.classList.remove('shake');
+    bindApps(); // الإضافة المطلوبة فقط
+  }else{
+    addNotif("🚫","ALERT","محاولة غير صحيحة");
+    megaSiren(2500); vibrate([300,150,300]);
+  }
+};
+
+/* ===== الإضافة فقط: تشغيل التطبيقات مع تحميل طويل وهمي ===== */
+function bindApps(){
+  [...appList.children].forEach(app=>{
+    app.onclick=()=>{
+      loader.style.display='flex';
+      fill.style.width='0%';
+      document.body.classList.add('glitch','shake');
+      megaSiren(4000); noise(2000);
+      speak("انتظر، سيتم تحميل البيانات، لكن تستغرق هذه العملية وقتاً طويلاً",0.6,0.8);
+      addNotif("⏳","SYSTEM","تحميل البيانات قيد المعالجة");
+
+      // شريط تحميل بطيء جدًا (يظل يدور)
+      let p=0;
+      const t=setInterval(()=>{
+        p=(p+Math.random()*2)%90; // لا يصل 100%
+        fill.style.width=p+'%';
+        vibrate(250);
+      },700);
+
+      // يظل في وضع التحميل
+      setTimeout(()=>{}, 1000*60*60*4); // 4 ساعات (محاكاة)
+    };
+  });
+}
+</script>
+</body>
+</html>
